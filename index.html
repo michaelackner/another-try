@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Processor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <h1>Excel Processor</h1>
+            <p>Upload a multi-sheet Excel file to generate a formatted report with enriched data</p>
+        </header>
+
+        <main class="app-main">
+            <!-- File Upload Section -->
+            <section class="upload-section">
+                <div class="file-upload">
+                    <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
+                    <label for="fileInput" class="upload-button">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                        </svg>
+                        Choose Excel File
+                    </label>
+                    <div class="file-info" id="fileInfo" style="display: none;">
+                        <span id="fileName"></span>
+                        <button id="clearFile" class="clear-button">×</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Advanced Settings Section -->
+            <section class="settings-section">
+                <details class="advanced-settings">
+                    <summary>Advanced Settings</summary>
+                    <div class="settings-grid">
+                        <div class="setting-group">
+                            <label for="outputSheetName">Output Sheet Name:</label>
+                            <input type="text" id="outputSheetName" value="Q1-Q2-Q3-Q4-2024">
+                        </div>
+                        <div class="setting-group">
+                            <label for="rawSheet1Name">Raw Sheet 1 Name:</label>
+                            <input type="text" id="rawSheet1Name" placeholder="Sheet1">
+                        </div>
+                        <div class="setting-group">
+                            <label for="rawSheet2Name">Raw Sheet 2 Name (Costs):</label>
+                            <input type="text" id="rawSheet2Name" placeholder="Sheet2">
+                        </div>
+                        <div class="setting-group">
+                            <label for="rawSheet3Name">Raw Sheet 3 Name (Hedge):</label>
+                            <input type="text" id="rawSheet3Name" placeholder="Sheet3">
+                        </div>
+                        <div class="setting-group">
+                            <label for="dealColumnName">Deal Number Column:</label>
+                            <input type="text" id="dealColumnName" value="N" placeholder="N">
+                        </div>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Process Button -->
+            <section class="process-section">
+                <button id="processButton" class="process-button" disabled>
+                    Process Excel File
+                </button>
+                <div id="loadingSpinner" class="spinner" style="display: none;">
+                    <div class="spinner-circle"></div>
+                    <span>Processing...</span>
+                </div>
+            </section>
+
+            <!-- Error Messages -->
+            <section class="error-section" id="errorSection" style="display: none;">
+                <div class="error-message" id="errorMessage"></div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <h2>Processing Complete</h2>
+
+                <!-- Summary Metrics -->
+                <div class="metrics-grid" id="metricsGrid">
+                    <!-- Metrics will be populated here -->
+                </div>
+
+                <!-- Preview -->
+                <div class="preview-section">
+                    <h3>Preview (First 20 rows)</h3>
+                    <div class="table-container">
+                        <table id="previewTable" class="preview-table">
+                            <!-- Preview data will be populated here -->
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Download Button -->
+                <div class="download-section">
+                    <button id="downloadButton" class="download-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" />
+                        </svg>
+                        Download Processed Excel File
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Include XLSX library -->
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

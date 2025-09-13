@@ -1,0 +1,148 @@
+# Excel Processor Web Application
+
+A no-code web application that processes multi-sheet Excel files to create formatted reports with enriched data.
+
+## Features
+
+- **File Upload**: Drag & drop or select Excel files (.xlsx/.xls)
+- **Advanced Settings**: Configurable sheet names and column mappings
+- **Two-Step Processing**:
+  - **Step 1**: Creates formatted report with headers A-V and applies styling
+  - **Step 2**: Enriches data using lookup tables and business rules
+- **Preview**: Shows first 20 rows of processed data
+- **Summary Metrics**: Displays processing statistics
+- **Download**: Exports final Excel workbook
+
+## Getting Started
+
+### Prerequisites
+- Node.js (v14 or higher)
+- npm
+
+### Installation
+```bash
+npm install
+```
+
+### Running the Application
+```bash
+npm start
+```
+
+The application will be available at `http://127.0.0.1:8080`
+
+### Testing
+A sample test file can be created using:
+```bash
+node create_test_excel.js
+```
+
+## Excel File Requirements
+
+### Sheet Structure
+The Excel file must contain 3 sheets:
+
+1. **Sheet 1** (WHB/CIF & base data):
+   - Column B: VSA deal
+   - Column AA: VESSEL
+   - Column M: Product
+   - Column L: Hedge
+   - Column Q: Qty BBL
+   - Column AB: Inco
+   - Column AD: Contractual Location
+   - Column AL: Risk
+   - Column X: Date
+   - Column BZ: Must contain "WHB" for WHB+CIF deals
+   - Column AB: Must contain "CIF" for WHB+CIF deals
+
+2. **Sheet 2** (Costs):
+   - Column N: Deal number
+   - Column AQ: Cost type (BOT, BLC, CIN, CLI)
+   - Column AV: Amount
+
+3. **Sheet 3** (Hedge):
+   - Column M: Hedge number
+   - Column BR: VSA comments
+   - Column CN: Additional information
+
+### Advanced Settings
+
+- **Output Sheet Name**: Name for the generated report sheet (default: "Q1-Q2-Q3-Q4-2024")
+- **Raw Sheet Names**: Override default sheet names if needed
+- **Deal Number Column**: Configure the column containing deal numbers (default: "N")
+
+## Processing Rules
+
+### Step 1: Format & Structure
+- Creates headers A-V with proper formatting
+- Maps raw data columns to new structure
+- Sorts by date with month grouping
+- Applies Excel formatting (borders, fonts, column widths)
+
+### Step 2: Business Rules
+1. **MIDLANDS Product**: Sets columns E-K to 0 and locks them
+2. **WHB+CIF Deals**: Sets insurance columns I,J to 0 and locks them
+3. **LC Costs**: Populates column E with BOT+BLC cost totals
+4. **CIN Insurance**: Populates column I with CIN costs
+5. **CLI Insurance**: Populates column J with CLI costs
+6. **TOTAL Formula**: Column L = SUM(E:K)
+7. **VSA Comments**: Populates column U from hedge lookup
+8. **Additional Information**: Populates column V from hedge lookup
+
+## Output Columns
+
+| Col | Name | Description |
+|-----|------|-------------|
+| A | Varo deal | |
+| B | VSA deal | Mapped from raw B |
+| C | VESSEL | Mapped from raw AA |
+| D | VMAG % | |
+| E | L/C costs | BOT+BLC totals |
+| F | Load insp | |
+| G | Discharge inspection | |
+| H | Superintendent | |
+| I | CIN insurance | CIN costs |
+| J | CLI insurance | CLI costs |
+| K | Provisional charge | |
+| L | TOTAL USD | =SUM(E:K) |
+| M | VARO comments | |
+| N | Product | Mapped from raw M |
+| O | Hedge | Mapped from raw L |
+| P | Qty BBL | Mapped from raw Q |
+| Q | Inco | Mapped from raw AB |
+| R | Contractual Location | Mapped from raw AD |
+| S | Risk | Mapped from raw AL |
+| T | Date | Mapped from raw X |
+| U | VSA comments | From hedge lookup |
+| V | Additional information | From hedge lookup |
+
+## Performance Notes
+
+- Uses efficient lookup tables for O(1) data matching
+- Processes large files using background operations
+- Memory-optimized for Excel files up to 50MB
+
+## Error Handling
+
+The application validates:
+- File format (.xlsx/.xls)
+- Required sheet presence
+- Essential column availability
+- Minimum data requirements
+
+Clear error messages guide users when issues are encountered.
+
+## Browser Support
+
+- Chrome/Edge (recommended)
+- Firefox
+- Safari
+
+Requires modern browser with support for:
+- ES6+ JavaScript
+- File API
+- ArrayBuffer processing
+
+## License
+
+MIT License
