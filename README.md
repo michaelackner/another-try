@@ -1,6 +1,12 @@
-# Excel Processor Web Application
+# VARO REBILLING - Excel Processor Web Application
 
-A no-code web application that processes multi-sheet Excel files to create formatted reports with enriched data.
+A modern web application that processes multi-sheet Excel files to create formatted reports with enriched data. Features a beautiful oil-themed dashboard with Python backend for reliable Excel processing.
+
+## Architecture
+
+- **Frontend**: JavaScript + HTML/CSS with oil-themed dashboard design
+- **Backend**: Python FastAPI service with openpyxl for Excel processing
+- **Processing**: All 8 business rules and formatting handled server-side
 
 ## Features
 
@@ -9,27 +15,46 @@ A no-code web application that processes multi-sheet Excel files to create forma
 - **Two-Step Processing**:
   - **Step 1**: Creates formatted report with headers A-V and applies styling
   - **Step 2**: Enriches data using lookup tables and business rules
-- **Preview**: Shows first 20 rows of processed data
-- **Summary Metrics**: Displays processing statistics
-- **Download**: Exports final Excel workbook
+- **Dashboard Metrics**: Displays total deals, volume, and product distribution
+- **Perfect Formatting**: Bold headers, yellow month cells, column borders, and proper alignment
+- **Download**: Exports final Excel workbook with professional formatting
 
 ## Getting Started
 
 ### Prerequisites
 - Node.js (v14 or higher)
+- Python 3.8 or higher
 - npm
 
 ### Installation
 ```bash
+# Install frontend dependencies
 npm install
+
+# Install Python backend dependencies
+pip install -r requirements.txt
 ```
 
 ### Running the Application
+
+#### Option 1: Use the start script (recommended)
 ```bash
+./start.sh
+```
+
+#### Option 2: Start servers manually
+```bash
+# Terminal 1: Start Python backend
+python3 server.py
+
+# Terminal 2: Start frontend
 npm start
 ```
 
-The application will be available at `http://127.0.0.1:8080`
+The application will be available at:
+- **Dashboard**: `http://127.0.0.1:8080`
+- **API Backend**: `http://127.0.0.1:8000`
+- **API Documentation**: `http://127.0.0.1:8000/docs`
 
 ### Testing
 A sample test file can be created using:
