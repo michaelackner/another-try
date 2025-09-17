@@ -19,6 +19,8 @@ class ExcelProcessor {
         // Chart state
         this.productChart = null;
         this.productChartType = 'bar';
+        this.rawFileSelected = false;
+        this.formattedFileSelected = false;
         this.setupEventListeners();
 
         // Initialize theme from storage or system
@@ -28,13 +30,29 @@ class ExcelProcessor {
     setupEventListeners() {
         const fileInput = document.getElementById('fileInput');
         const clearFile = document.getElementById('clearFile');
+        const existingFileInput = document.getElementById('existingFileInput');
+        const clearExistingFile = document.getElementById('clearExistingFile');
         const processButton = document.getElementById('processButton');
         const downloadButton = document.getElementById('downloadButton');
 
-        fileInput.addEventListener('change', this.handleFileSelect.bind(this));
-        clearFile.addEventListener('click', this.clearFile.bind(this));
-        processButton.addEventListener('click', this.processFile.bind(this));
-        downloadButton.addEventListener('click', this.downloadFile.bind(this));
+        if (fileInput) {
+            fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        }
+        if (clearFile) {
+            clearFile.addEventListener('click', this.clearFile.bind(this));
+        }
+        if (existingFileInput) {
+            existingFileInput.addEventListener('change', this.handleExistingFileSelect.bind(this));
+        }
+        if (clearExistingFile) {
+            clearExistingFile.addEventListener('click', this.clearExistingFile.bind(this));
+        }
+        if (processButton) {
+            processButton.addEventListener('click', this.processFile.bind(this));
+        }
+        if (downloadButton) {
+            downloadButton.addEventListener('click', this.downloadFile.bind(this));
+        }
 
         // Map mode toggles
         document.addEventListener('click', (e) => {
@@ -57,41 +75,148 @@ class ExcelProcessor {
         if (themeToggle) {
             themeToggle.addEventListener('click', () => this.toggleTheme());
         }
+
+        this.updateActionStates();
     }
 
     handleFileSelect(event) {
         const file = event.target.files[0];
-        if (!file) return;
-
         const fileInfo = document.getElementById('fileInfo');
         const fileName = document.getElementById('fileName');
-        const processButton = document.getElementById('processButton');
 
-        fileName.textContent = file.name;
-        fileInfo.style.display = 'flex';
-        processButton.disabled = false;
+        if (!file) {
+            if (fileInfo) {
+                fileInfo.style.display = 'none';
+            }
+            if (fileName) {
+                fileName.textContent = '';
+            }
+            this.rawFileSelected = false;
+            this.updateActionStates();
+            return;
+        }
 
+        if (!file.name.match(/\.(xlsx|xls)$/i)) {
+            this.showError('Please select a valid Excel file (.xlsx or .xls)');
+            event.target.value = '';
+            if (fileInfo) {
+                fileInfo.style.display = 'none';
+            }
+            if (fileName) {
+                fileName.textContent = '';
+            }
+            this.rawFileSelected = false;
+            this.updateActionStates();
+            return;
+        }
+
+        if (fileName) {
+            fileName.textContent = file.name;
+        }
+        if (fileInfo) {
+            fileInfo.style.display = 'flex';
+        }
+
+        this.rawFileSelected = true;
         this.hideError();
         this.hideResults();
+        this.updateActionStates();
+    }
+
+    handleExistingFileSelect(event) {
+        const file = event.target.files[0];
+        const fileInfo = document.getElementById('existingFileInfo');
+        const fileName = document.getElementById('existingFileName');
+
+        if (!file) {
+            if (fileInfo) {
+                fileInfo.style.display = 'none';
+            }
+            if (fileName) {
+                fileName.textContent = '';
+            }
+            this.formattedFileSelected = false;
+            this.updateActionStates();
+            return;
+        }
+
+        if (!file.name.match(/\.(xlsx|xls)$/i)) {
+            this.showError('Please select a valid Excel file (.xlsx or .xls)');
+            event.target.value = '';
+            if (fileInfo) {
+                fileInfo.style.display = 'none';
+            }
+            if (fileName) {
+                fileName.textContent = '';
+            }
+            this.formattedFileSelected = false;
+            this.updateActionStates();
+            return;
+        }
+
+        if (fileName) {
+            fileName.textContent = file.name;
+        }
+        if (fileInfo) {
+            fileInfo.style.display = 'flex';
+        }
+
+        this.formattedFileSelected = true;
+        this.hideError();
+        this.updateActionStates();
     }
 
     clearFile() {
         const fileInput = document.getElementById('fileInput');
         const fileInfo = document.getElementById('fileInfo');
-        const processButton = document.getElementById('processButton');
 
         fileInput.value = '';
         fileInfo.style.display = 'none';
-        processButton.disabled = true;
 
         this.hideError();
         this.hideResults();
+        this.rawFileSelected = false;
+        this.processedData = false;
+        this.updateActionStates();
+    }
+
+    clearExistingFile() {
+        const existingFileInput = document.getElementById('existingFileInput');
+        const fileInfo = document.getElementById('existingFileInfo');
+        const fileName = document.getElementById('existingFileName');
+
+        if (existingFileInput) {
+            existingFileInput.value = '';
+        }
+        if (fileInfo) {
+            fileInfo.style.display = 'none';
+        }
+        if (fileName) {
+            fileName.textContent = '';
+        }
+
+        this.formattedFileSelected = false;
+        this.updateActionStates();
+    }
+
+    updateActionStates() {
+        const processButton = document.getElementById('processButton');
+        if (processButton) {
+            processButton.disabled = !this.rawFileSelected;
+        }
+
+        const downloadButton = document.getElementById('downloadButton');
+        if (downloadButton) {
+            downloadButton.disabled = !(this.processedData && this.formattedFileSelected);
+        }
     }
 
     async processFile() {
         this.showLoading();
         this.hideError();
         this.hideResults();
+        this.processedData = false;
+        this.updateActionStates();
 
         try {
             const fileInput = document.getElementById('fileInput');
@@ -122,12 +247,14 @@ class ExcelProcessor {
 
             // Show results
             this.showResults();
+            this.updateActionStates();
 
         } catch (error) {
             console.error('Processing error:', error);
             this.showError(error.message);
         } finally {
             this.hideLoading();
+            this.updateActionStates();
         }
     }
 
@@ -556,21 +683,33 @@ class ExcelProcessor {
     // Preview functionality removed - dashboard now focuses on key metrics only
 
     async downloadFile() {
-        if (!this.processedData) return;
+        if (!this.processedData || !this.formattedFileSelected) return;
+
+        const downloadButton = document.getElementById('downloadButton');
+        if (downloadButton) {
+            downloadButton.disabled = true;
+        }
 
         try {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
+            const rawInput = document.getElementById('fileInput');
+            const formattedInput = document.getElementById('existingFileInput');
+            const rawFile = rawInput && rawInput.files ? rawInput.files[0] : null;
+            const formattedFile = formattedInput && formattedInput.files ? formattedInput.files[0] : null;
 
-            if (!file) {
-                throw new Error('No file selected');
+            if (!rawFile) {
+                throw new Error('No raw data file selected');
+            }
+
+            if (!formattedFile) {
+                throw new Error('Please select the existing formatted Excel file');
             }
 
             const settings = this.getSettings();
 
             // Create FormData for the Python backend
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('raw_file', rawFile);
+            formData.append('formatted_file', formattedFile);
             formData.append('output_sheet_name', settings.outputSheetName || 'Q1-Q2-Q3-Q4-2024');
             formData.append('raw_sheet1_name', settings.rawSheet1Name || '');
             formData.append('raw_sheet2_name', settings.rawSheet2Name || '');
@@ -578,14 +717,22 @@ class ExcelProcessor {
             formData.append('deal_column_name', settings.dealColumnName || 'N');
 
             // Send to Python backend
-            const response = await fetch(`${this.apiBaseUrl}/process`, {
+            const response = await fetch(`${this.apiBaseUrl}/reconcile`, {
                 method: 'POST',
                 body: formData
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Server processing failed');
+                let errorMessage = 'Server processing failed';
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorMessage;
+                } else {
+                    const text = await response.text();
+                    if (text) errorMessage = text;
+                }
+                throw new Error(errorMessage);
             }
 
             // Get the processed Excel file
@@ -595,7 +742,7 @@ class ExcelProcessor {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'formatted_output.xlsx';
+            a.download = 'reconciled_output.xlsx';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -604,6 +751,10 @@ class ExcelProcessor {
         } catch (error) {
             console.error('Download error:', error);
             this.showError(`Download failed: ${error.message}`);
+        } finally {
+            if (downloadButton) {
+                downloadButton.disabled = !(this.processedData && this.formattedFileSelected);
+            }
         }
     }
 
