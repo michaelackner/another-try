@@ -11,6 +11,7 @@ A modern web application that processes multi-sheet Excel files to create format
 ## Features
 
 - **File Upload**: Drag & drop or select Excel files (.xlsx/.xls)
+- **Dual Upload & Reconciliation**: Combine updated raw workbooks with an existing formatted workbook, automatically merge new deals, and highlight any changed values in red
 - **Advanced Settings**: Configurable sheet names and column mappings
 - **Two-Step Processing**:
   - **Step 1**: Creates formatted report with headers A-V and applies styling

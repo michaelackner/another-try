@@ -383,6 +383,111 @@ class ExcelProcessor:
                     else:
                         cell.alignment = center_alignment
 
+    def highlight_differences(self, new_workbook: Workbook, existing_workbook: Workbook, settings: Dict[str, Any]) -> None:
+        """Compare with existing workbook and highlight differences in red"""
+
+        target_sheet_name = settings.get('output_sheet_name') or new_workbook.active.title
+
+        new_ws = new_workbook[target_sheet_name] if target_sheet_name in new_workbook.sheetnames else new_workbook.active
+
+        if not existing_workbook.sheetnames:
+            return
+
+        if target_sheet_name in existing_workbook.sheetnames:
+            existing_ws = existing_workbook[target_sheet_name]
+        else:
+            existing_ws = existing_workbook.active
+
+        existing_map: Dict[str, List[Any]] = {}
+
+        for row_idx in range(1, existing_ws.max_row + 1):
+            if row_idx == 1:
+                continue
+            vsa_value = existing_ws.cell(row=row_idx, column=2).value
+            key = self.normalize(vsa_value)
+            if not key:
+                continue
+            row_values = [existing_ws.cell(row=row_idx, column=col).value for col in range(1, 23)]
+            existing_map[key] = row_values
+
+        for row_idx in range(1, new_ws.max_row + 1):
+            if row_idx == 1:
+                continue
+            vsa_value = new_ws.cell(row=row_idx, column=2).value
+            key = self.normalize(vsa_value)
+            if not key:
+                continue
+
+            row_values = [new_ws.cell(row=row_idx, column=col).value for col in range(1, 23)]
+
+            if key in existing_map:
+                old_values = existing_map[key]
+                for col_idx in range(1, 23):
+                    new_cell = new_ws.cell(row=row_idx, column=col_idx)
+                    new_val = row_values[col_idx - 1]
+                    old_val = old_values[col_idx - 1] if col_idx - 1 < len(old_values) else None
+                    if self.values_different(new_val, old_val) and self.should_highlight_cell(col_idx, new_val, old_val):
+                        self.apply_font_color(new_cell, 'FFFF0000')
+            else:
+                for col_idx in range(1, 23):
+                    cell = new_ws.cell(row=row_idx, column=col_idx)
+                    if self.should_highlight_cell(col_idx, cell.value, None):
+                        self.apply_font_color(cell, 'FFFF0000')
+
+    def apply_font_color(self, cell, color: str) -> None:
+        """Update cell font color while preserving other attributes"""
+
+        existing_font = cell.font if cell.font else Font()
+        cell.font = Font(
+            name=existing_font.name,
+            size=existing_font.size,
+            bold=existing_font.bold,
+            italic=existing_font.italic,
+            vertAlign=existing_font.vertAlign,
+            underline=existing_font.underline,
+            strike=existing_font.strike,
+            color=color
+        )
+
+    def should_highlight_cell(self, col_idx: int, new_val: Any, old_val: Any) -> bool:
+        """Determine if a cell should be highlighted"""
+
+        if col_idx == 1:
+            return False
+
+        if new_val is None and (old_val is None or old_val == ''):
+            return False
+
+        if isinstance(new_val, str):
+            return bool(new_val.strip())
+
+        return True
+
+    def values_different(self, new_val: Any, old_val: Any) -> bool:
+        """Check if two values should be considered different"""
+
+        if new_val is None and (old_val is None or old_val == ''):
+            return False
+
+        if self.is_numeric(new_val) and self.is_numeric(old_val):
+            try:
+                return abs(float(new_val) - float(old_val)) > 1e-6
+            except Exception:
+                pass
+
+        norm_new = self.normalize(new_val)
+        norm_old = self.normalize(old_val)
+        return norm_new != norm_old
+
+    def is_numeric(self, value: Any) -> bool:
+        try:
+            if value is None or value == '':
+                return False
+            float(value)
+            return True
+        except (TypeError, ValueError):
+            return False
+
     def normalize(self, value) -> str:
         """Normalize values for consistent comparison"""
         return str(value).strip().upper() if value else ''
@@ -459,6 +564,56 @@ async def process_excel(
 
         return StreamingResponse(
             BytesIO(output_buffer.getvalue()),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers=headers
+        )
+
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/reconcile")
+async def reconcile_excels(
+    raw_file: UploadFile,
+    formatted_file: UploadFile,
+    output_sheet_name: str = Form("Q1-Q2-Q3-Q4-2024"),
+    raw_sheet1_name: str = Form(""),
+    raw_sheet2_name: str = Form(""),
+    raw_sheet3_name: str = Form(""),
+    deal_column_name: str = Form("N")
+):
+    """Process raw data, compare with existing workbook, and highlight differences"""
+
+    try:
+        raw_data = await raw_file.read()
+        formatted_data = await formatted_file.read()
+
+        settings = {
+            'output_sheet_name': output_sheet_name,
+            'raw_sheet1_name': raw_sheet1_name if raw_sheet1_name else None,
+            'raw_sheet2_name': raw_sheet2_name if raw_sheet2_name else None,
+            'raw_sheet3_name': raw_sheet3_name if raw_sheet3_name else None,
+            'deal_column_name': deal_column_name
+        }
+
+        processor = ExcelProcessor()
+        processed_buffer = processor.process_excel_file(raw_data, settings)
+        processed_buffer.seek(0)
+
+        new_workbook = load_workbook(processed_buffer)
+        existing_workbook = load_workbook(BytesIO(formatted_data), data_only=True)
+
+        processor.highlight_differences(new_workbook, existing_workbook, settings)
+
+        output = BytesIO()
+        new_workbook.save(output)
+        output.seek(0)
+
+        headers = {
+            "Content-Disposition": "attachment; filename=reconciled_output.xlsx"
+        }
+
+        return StreamingResponse(
+            output,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers=headers
         )
