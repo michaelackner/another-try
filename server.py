@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from io import BytesIO
 import json
+import re
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -279,12 +280,14 @@ class ExcelProcessor:
         for row in sheet2.iter_rows(min_row=2, values_only=True):
             if row and len(row) > 47:
                 deal = self.normalize(row[13])  # Column N (index 13)
-                cost_type = self.normalize(row[42])  # Column AQ (index 42)
                 amount = self.safe_float(row[47])  # Column AV (index 47)
 
-                if deal and cost_type:
-                    key = f"{deal},{cost_type}"
-                    costs_map[key] = costs_map.get(key, 0) + amount
+                cost_types = self.parse_cost_types(row[42])
+
+                if deal and cost_types:
+                    for cost_type in cost_types:
+                        key = f"{deal},{cost_type}"
+                        costs_map[key] = costs_map.get(key, 0) + amount
 
         # Hedge maps from Sheet 3
         hedge_to_br = {}
@@ -491,6 +494,41 @@ class ExcelProcessor:
     def normalize(self, value) -> str:
         """Normalize values for consistent comparison"""
         return str(value).strip().upper() if value else ''
+
+    def parse_cost_types(self, raw_cost_type: Any) -> List[str]:
+        """Parse cost type values into recognized tokens.
+
+        Ensures that BLC is only captured when it is the sole cost type in the
+        source data (no composite values such as "BLC/BOT"). Other supported
+        cost types are still parsed from composite values so they remain
+        available for their respective rules.
+        """
+
+        if not raw_cost_type:
+            return []
+
+        normalized = self.normalize(raw_cost_type)
+        allowed_types: Set[str] = {'BOT', 'BLC', 'CIN', 'CLI', 'INS', 'INQ', 'INA'}
+
+        if normalized in allowed_types:
+            return [normalized]
+
+        tokens = re.split(r"[/,&+]|\\bOR\\b|\\bAND\\b", normalized)
+        parsed_types: List[str] = []
+
+        for token in tokens:
+            token = token.strip()
+            if not token:
+                continue
+
+            if token == 'BLC':
+                # Skip BLC when part of a composite cost type entry.
+                continue
+
+            if token in allowed_types:
+                parsed_types.append(token)
+
+        return parsed_types
 
     def parse_date(self, value) -> Optional[datetime]:
         """Parse various date formats"""
